@@ -11,7 +11,7 @@ en ook hoeveel er op de juiste plaats zitten.
 
 
 # MasterMindV2
-toegevoegd op 15-12-2021
+toegevoegd op 15-12-2021 , updated op 17-12-2021
 
 compile: gcc -Wall -o MasterMindV2 MasterMindV2.c $(pkg-config gtk+-3.0 --cflags --libs)
 
