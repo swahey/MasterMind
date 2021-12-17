@@ -1,10 +1,9 @@
 
-// compile: gcc -Wall -o MasterMindV2 MasterMindV2.c -lm $(pkg-config gtk+-3.0 --cflags --libs)
+// compile: gcc -Wall -o MasterMindV2 MasterMindV2.c $(pkg-config gtk+-3.0 --cflags --libs)
 
 #include <gtk/gtk.h>
-#include <string.h>
-#include <math.h>       // vergeet -lm niet in compile regel
 #include <stdlib.h>
+
 
 GtkWidget *window;
 GtkWidget *grid;
@@ -32,6 +31,9 @@ gdouble okx1, okx2, oky1, oky2;     // OK knop
 gboolean knopOKenable = FALSE;
 gboolean laatstekans = FALSE;
 gboolean codejuist = FALSE;
+gboolean buttonOKMuisOver = FALSE;
+gboolean buttonNewGameMuisOver = FALSE;
+gboolean buttonNewGameIsIngedrukt = FALSE;
 
 // voor animated weergave:
 gdouble rgbR = 0.00;
@@ -51,12 +53,12 @@ gboolean rgbBtelUp = TRUE;
 // declaretions:
 gboolean draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data);
 gboolean get_Tijd();
-gchar *str(int x);
 gboolean mouse_moved(GtkWidget *widget, GdkEvent *event, gpointer user_data);
 gboolean button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
+gboolean button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
 gboolean checkrij(int R);
 gboolean checkcombinatie(int R);
-int machtxy(int x, int y);
+gchar *str(int x);
 void plaats_te_zoeken_code();
 void reset_velden();
 void init_kleuren();
@@ -68,16 +70,6 @@ gchar *str(int x)
 {
     gchar *y = g_strdup_printf("%i", x);        //  maak een string van en integer
     return y;
-}
-
-int machtxy(int x, int y)       // machtsverheffing van integers,  x tot de macht y
-{
-    int m = x;
-    for (int i=0; i<y-1; i++)
-    {
-        m = m * x;
-    }
-    return m;
 }
 
 void init_kleuren()
@@ -158,34 +150,16 @@ gboolean checkcombinatie(int R)     // R is rij 1 tot 12
     return combinatie;
 }
 
-
 void plaats_te_zoeken_code()
 {
-    int randnr, randnr1, randnr2, randnr3, randnr4;
-    srand(time(0));
-    randnr = rand();
-    char *strrandnr = str(randnr);
-    int strl = strlen(strrandnr);
-    randnr1 = randnr / machtxy(10, strl-1);
-    randnr2 = randnr / machtxy(10, strl-2) - randnr1 * 10;
-    randnr3 = randnr / machtxy(10, strl-3) - randnr1 * 100 - randnr2 * 10;
-    randnr4 = randnr / machtxy(10, strl-4) - randnr1 * 1000 - randnr2 * 100 - randnr3 * 10;
-    if (randnr1 > 6){ randnr1 = randnr1 - 6; }
-    if (randnr2 > 6){ randnr2 = randnr2 - 6; }
-    if (randnr3 > 6){ randnr3 = randnr3 - 6; }
-    if (randnr4 > 6){ randnr4 = randnr4 - 6; }
-    if (randnr1 < 1){ randnr1 = 1; }
-    if (randnr2 < 1){ randnr2 = 1; }
-    if (randnr3 < 1){ randnr3 = 1; }
-    if (randnr4 < 1){ randnr4 = 1; }
-    veld[1][13] = randnr1;
-    veld[2][13] = randnr2;
-    veld[3][13] = randnr3;
-    veld[4][13] = randnr4;
-    g_print("A = %i\n", randnr1);  // TEST
-    g_print("B = %i\n", randnr2);  // TEST
-    g_print("C = %i\n", randnr3);  // TEST
-    g_print("D = %i\n", randnr4);  // TEST
+	srand(time(NULL));
+    g_print("Code = ");
+    for (int i=1; i<5; i++)
+    {
+	    veld[i][13] = (rand()%6) + 1;
+        g_print("%i ", veld[i][13]);
+    }
+    g_print("\n");
 }
 
 void reset_velden()
@@ -222,9 +196,26 @@ gboolean mouse_moved(GtkWidget *widget, GdkEvent *event, gpointer user_data)
     if (event->type == GDK_MOTION_NOTIFY)
     {
         GdkEventMotion *e = (GdkEventMotion*)event;
-        //g_print("Coordinaten: %u, %u\n", (guint)e->x, (guint)e->y);
         xArea = (guint)e->x;
         yArea = (guint)e->y;
+        if ((xArea > okx1) & (xArea < okx2) & (yArea > oky1) & (yArea < oky2))
+            buttonOKMuisOver = TRUE;
+        else
+            buttonOKMuisOver = FALSE;
+        if ((xArea > ngx1) & (xArea < ngx2) & (yArea > ngy1) & (yArea < ngy2)) // New Game knop
+            buttonNewGameMuisOver = TRUE;
+        else
+            buttonNewGameMuisOver = FALSE;
+    }
+    return TRUE;
+}
+
+gboolean button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data)
+{
+    if (event->button == GDK_BUTTON_PRIMARY)
+    {
+        usleep(200000);
+        buttonNewGameIsIngedrukt = FALSE;
     }
     return TRUE;
 }
@@ -233,7 +224,6 @@ gboolean button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer d
 {
     if (event->button == GDK_BUTTON_PRIMARY)
     {
-        g_print("MuisButtonLinks : %i, %i\n", xArea, yArea);  // TEST
         if ((kleur == 0) | (yArea > yWit-grote))
         {
             kies_kleur();
@@ -260,7 +250,6 @@ gboolean button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer d
         }
         if ((xArea > okx1) & (xArea < okx2) & (yArea > oky1) & (yArea < oky2) & (knopOKenable)) // OK knop
         {
-            g_print("OK is gedrukt\n");  // TEST
             knopOKenable = FALSE;
             if (checkcombinatie(rij))
             {
@@ -280,7 +269,7 @@ gboolean button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer d
         }
         if ((xArea > ngx1) & (xArea < ngx2) & (yArea > ngy1) & (yArea < ngy2)) // New Game knop
         {
-            g_print("New Game is gedrukt\n");  // TEST
+            buttonNewGameIsIngedrukt = TRUE;
             knopOKenable = FALSE;
             laatstekans = FALSE;
             codejuist = FALSE;
@@ -293,7 +282,6 @@ gboolean button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer d
     }
     else if (event->button == GDK_BUTTON_SECONDARY)
     {
-        g_print("MuisButtonRechts: %i, %i\n", xArea, yArea);  // TEST
         if (kleur == 0)
             kies_kleur();
         else
@@ -550,10 +538,13 @@ gboolean draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data)
         int okw = grote*3;
         int okh = grote*2;
         okx1 = 12*grote; okx2 = okx1 + okw;  // voor OK knop
-        cairo_set_source_rgb(cr, 0.85, 0.85, 0.85);
+        if (buttonOKMuisOver)
+            cairo_set_source_rgb(cr, 0.75, 0.75, 0.75);
+        else
+            cairo_set_source_rgb(cr, 0.85, 0.85, 0.85);
         cairo_rectangle (cr, okx1, oky1, okw, okh);  // x, y, breedte, hoogte
         cairo_fill (cr);
-        cairo_set_source_rgb(cr, 0.00, 0.00, 0.00);  // (cr, 0.55, 0.15, 0.15);
+        cairo_set_source_rgb(cr, 0.00, 0.00, 0.00);
         cairo_set_font_size(cr, grote);
         cairo_move_to(cr, okx1+grote*0.5, oky1+grote*1.4);
         cairo_show_text(cr, "OK?");
@@ -568,7 +559,17 @@ gboolean draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data)
     cairo_set_source_rgb(cr, 0.35, 0.35, 0.35);     // knoprand
     cairo_rectangle (cr, x-1, y-1, ngw+3, ngh+3);
     cairo_fill (cr);
-    cairo_set_source_rgb(cr, 0.85, 0.85, 0.85);     // knop zelf
+    if (buttonNewGameMuisOver)
+    {
+        if (buttonNewGameIsIngedrukt)
+            cairo_set_source_rgb(cr, 0.65, 0.65, 0.65);     // knop zelf
+        else
+            cairo_set_source_rgb(cr, 0.75, 0.75, 0.75);     // knop zelf
+    }
+    else
+    {
+        cairo_set_source_rgb(cr, 0.85, 0.85, 0.85);     // knop zelf
+    }
     cairo_rectangle (cr, x, y, ngw, ngh);
     cairo_fill (cr);
     cairo_set_source_rgb(cr, 0.00, 0.00, 0.00);     // knop tekst
@@ -595,10 +596,42 @@ gboolean draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data)
         cairo_fill (cr);
     }
 
+    // volgende is maar bijzaak, niet nodig!
+    // figuurtje:
+    // links:
+    x = grote*1.5;
+    y = height-grote*1.7;
+    cairo_set_source_rgb(cr, 0.85-rgbR, 0.85, 0.00);
+    cairo_arc (cr, x, y, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_arc (cr, x+grote*1.2, y, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_arc (cr, x+grote*0.6, y-grote*0.6, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_arc (cr, x+grote*0.6, y+grote*0.6, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_set_source_rgb(cr, 0.80, 0.50-rgbG*0.5, rgbB);
+    cairo_arc (cr, x+grote*0.6, y, grote*0.3, 0, 2 * G_PI);
+    cairo_fill (cr);
+    // rechts:
+    x = width-grote*2.7;
+    cairo_set_source_rgb(cr, 0.85-rgbR, 0.85, 0.00);
+    cairo_arc (cr, x, y, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_arc (cr, x+grote*1.2, y, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_arc (cr, x+grote*0.6, y-grote*0.6, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_arc (cr, x+grote*0.6, y+grote*0.6, grote*0.4, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_set_source_rgb(cr, 0.80, 0.50-rgbG*0.5, rgbB);
+    cairo_arc (cr, x+grote*0.6, y, grote*0.3, 0, 2 * G_PI);
+    cairo_fill (cr);
+
     //signatuur:
     cairo_set_source_rgb(cr, 0.00, 0.00, 0.85);
     cairo_set_font_size(cr, grote*0.7);
-    cairo_move_to(cr, width-grote*2, height-grote*0.5);
+    cairo_move_to(cr, width-grote*1.7, height-grote*0.3);
     cairo_show_text(cr, "swa");    
 
     return FALSE;
@@ -609,7 +642,6 @@ gint main(int argc,char *argv[])
     gtk_init (&argc, &argv);
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     gtk_container_set_border_width (GTK_CONTAINER (window), 8);
-    //gtk_widget_set_size_request    (GTK_WIDGET(window), 300, 600);
 
     drawing_area = gtk_drawing_area_new();
     grid         = gtk_grid_new ();
@@ -631,9 +663,10 @@ gint main(int argc,char *argv[])
     g_timeout_add(100, (GSourceFunc) get_Tijd, NULL);  // elke 100 usec functie uitvoeren
     g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
 
-    gtk_widget_set_events(drawing_area, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK);   // | GDK_KEY_RELEASE_MASK | GDK_KEY_PRESS_MASK
+    gtk_widget_set_events(drawing_area, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);   // | GDK_KEY_RELEASE_MASK | GDK_KEY_PRESS_MASK
     g_signal_connect(G_OBJECT(drawing_area), "motion-notify-event", G_CALLBACK(mouse_moved), NULL);
     g_signal_connect (drawing_area, "button-press-event", G_CALLBACK (button_press_event), NULL);
+    g_signal_connect (drawing_area, "button-release-event", G_CALLBACK (button_release_event), NULL);
 
 
     gtk_widget_show_all (window);
