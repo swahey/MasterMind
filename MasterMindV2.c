@@ -152,14 +152,14 @@ gboolean checkcombinatie(int R)     // R is rij 1 tot 12
 
 void plaats_te_zoeken_code()
 {
-	srand(time(NULL));
-    g_print("Code = ");
+    srand(time(NULL));
+    //g_print("Code = "); // TEST
     for (int i=1; i<5; i++)
     {
-	    veld[i][13] = (rand()%6) + 1;
-        g_print("%i ", veld[i][13]);
+	veld[i][13] = (rand()%6) + 1;
+        //g_print("%i ", veld[i][13]); // TEST
     }
-    g_print("\n");
+    //g_print("\n"); // TEST
 }
 
 void reset_velden()
